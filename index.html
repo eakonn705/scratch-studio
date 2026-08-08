@@ -331,7 +331,10 @@
     display:flex; align-items:center; justify-content:center;
     background:var(--yellow); font-size:14px; font-weight:800; color:#fff;
     border:1.5px solid var(--ink);
+    overflow:hidden;
   }
+  .activity-item .icon img{width:100%; height:100%; object-fit:cover; display:block;}
+  .activity-item .icon .init{width:100%; height:100%; display:flex; align-items:center; justify-content:center;}
   .activity-item .body{flex:1; font-size:13.5px;}
   .activity-item .body .who{font-weight:800;}
   .activity-item .when{font-size:11px; color:#8a8272; white-space:nowrap;}
@@ -931,7 +934,9 @@ async function loadActivity(reset){
     } else {
       emptyNote.classList.add('hidden');
     }
-    list.forEach(ev => renderActivity(ev, list_el));
+    const namesForAvatars = new Set();
+    list.forEach(ev => renderActivity(ev, list_el, namesForAvatars));
+    loadActivityAvatars(namesForAvatars);
 
     if(list.length > 0){
       const oldest = list.reduce((min, ev) => {
@@ -983,7 +988,7 @@ function who(name){
 function actorName(ev){
   return ev.actor_username || ev?.actor?.username || ev.username || null;
 }
-function renderActivity(ev, container){
+function renderActivity(ev, container, namesForAvatars){
   const item = document.createElement('div');
   item.className = 'activity-item';
   const type = (ev.type || '').toLowerCase();
@@ -993,12 +998,60 @@ function renderActivity(ev, container){
     ? labelFn(name, ev)
     : (name ? `${who(name)} が「${escapeHtml(type || '不明の操作')}」を行いました` : `「${escapeHtml(type || '不明の操作')}」が行われました`);
   const initial = name ? name.slice(0,1).toUpperCase() : '?';
+  const iconHtml = name
+    ? `<span class="init" data-username="${escapeHtml(name)}">${escapeHtml(initial)}</span>`
+    : `<span class="init">${escapeHtml(initial)}</span>`;
   item.innerHTML = `
-    <div class="icon">${escapeHtml(initial)}</div>
+    <div class="icon">${iconHtml}</div>
     <div class="body">${text}</div>
     <div class="when">${fmtDate(ev.datetime_created)}</div>
   `;
   container.appendChild(item);
+  if(name && namesForAvatars){
+    namesForAvatars.add(name);
+  }
+}
+
+// アクティビティのアイコンを、頭文字の代わりに実際のユーザーアイコン画像に差し替える。
+// activityイベント自体にはアバター画像のURLが含まれていないため、
+// ユーザー名が判明しているものについては /users/<username> を追加で取得して補う。
+// （キュレーター・マネージャー欄はAPIレスポンスに最初から画像URLが入っているので
+//  この追加取得が不要だった、という違い）
+const AVATAR_CONCURRENCY = 6;
+const avatarCache = new Map(); // username -> image URL または null(取得失敗)
+async function loadActivityAvatars(nameSet){
+  const names = Array.from(nameSet);
+  let cursor = 0;
+  async function worker(){
+    while(cursor < names.length){
+      const name = names[cursor++];
+      let imgUrl = avatarCache.get(name);
+      if(imgUrl === undefined){
+        try {
+          const u = await fetchJson(`${API}/users/${encodeURIComponent(name)}`);
+          imgUrl = u?.profile?.images?.['50x50'] || u?.profile?.images?.['90x90'] || u?.profile?.images?.['32x32'] || null;
+        } catch(err){
+          console.error(err);
+          imgUrl = null;
+        }
+        avatarCache.set(name, imgUrl);
+      }
+      if(imgUrl){
+        document.querySelectorAll(`.icon .init[data-username="${cssEscape(name)}"]`).forEach(el => {
+          const img = document.createElement('img');
+          img.src = imgUrl;
+          img.alt = name;
+          img.loading = 'lazy';
+          el.replaceWith(img);
+        });
+      }
+    }
+  }
+  const workers = Array.from({length: Math.min(AVATAR_CONCURRENCY, names.length)}, worker);
+  await Promise.all(workers);
+}
+function cssEscape(s){
+  return String(s).replace(/["\\]/g, '\\$&');
 }
 
 function escapeHtml(str){
