@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スタジオのぞき窓 - Scratch Studio Viewer</title>
+<style>
+  :root{
+    --paper:#fff9ec;
+    --ink:#2b2b2b;
+    --orange:#ff8c1a;
+    --orange-dark:#e06e00;
+    --blue:#4c97ff;
+    --blue-dark:#3373cc;
+    --yellow:#ffbf00;
+    --green:#59c059;
+    --purple:#9966ff;
+    --line:#e7ddc7;
+    --card:#ffffff;
+    --shadow:6px 6px 0 rgba(43,43,43,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 92% 4%, rgba(255,191,0,0.18), transparent 40%),
+      radial-gradient(circle at 4% 92%, rgba(76,151,255,0.14), transparent 42%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Segoe UI', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+    min-height:100vh;
+    line-height:1.6;
+  }
+  .scratch-marks{
+    position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0;
+  }
+  .scratch-marks span{
+    position:absolute; display:block; border-radius:12px; opacity:0.08;
+  }
+
+  header{
+    position:relative; z-index:1;
+    padding:56px 24px 40px;
+    text-align:center;
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--ink); color:var(--paper);
+    font-size:12px; letter-spacing:0.18em; text-transform:uppercase;
+    padding:6px 14px; border-radius:999px; margin-bottom:18px;
+    font-weight:700;
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--orange);}
+  h1{
+    font-family:'Trebuchet MS','Hiragino Sans',sans-serif;
+    font-size:clamp(32px,5vw,52px);
+    margin:0 0 10px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+  }
+  h1 .block{
+    display:inline-block;
+    background:var(--blue);
+    color:#fff;
+    padding:2px 14px;
+    border-radius:10px;
+    box-shadow:var(--shadow);
+    transform:rotate(-1.2deg);
+  }
+  header p.sub{
+    max-width:520px; margin:0 auto; color:#5a5346; font-size:15px;
+  }
+
+  main{position:relative; z-index:1; max-width:960px; margin:0 auto; padding:0 20px 100px;}
+
+  .search-panel{
+    background:var(--card);
+    border:3px solid var(--ink);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:26px;
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+    margin-bottom:36px;
+  }
+  .search-panel label{
+    font-weight:700; font-size:13px; color:#5a5346;
+    display:block; margin-bottom:6px; letter-spacing:0.02em;
+  }
+  .field{flex:1; min-width:220px;}
+  .field-inner{position:relative;}
+  .field-inner .hash{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    color:var(--orange-dark); font-weight:800; font-size:18px;
+  }
+  input[type=text], input[type=number]{
+    width:100%;
+    padding:13px 14px 13px 34px;
+    border:2.5px solid var(--ink);
+    border-radius:12px;
+    font-size:16px;
+    background:#fffef9;
+    color:var(--ink);
+    outline:none;
+  }
+  input[type=text]:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(76,151,255,0.25);}
+  button.go{
+    padding:13px 26px;
+    background:var(--orange);
+    color:#fff;
+    border:2.5px solid var(--ink);
+    border-radius:12px;
+    font-weight:800;
+    font-size:15px;
+    cursor:pointer;
+    box-shadow:4px 4px 0 var(--ink);
+    transition:transform .12s ease, box-shadow .12s ease;
+    white-space:nowrap;
+  }
+  button.go:hover{transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink);}
+  button.go:active{transform:translate(0,0); box-shadow:2px 2px 0 var(--ink);}
+  button.go:disabled{opacity:0.55; cursor:progress; transform:none;}
+  .hint{font-size:12.5px; color:#93897a; margin-top:8px; width:100%;}
+  .hint a{color:var(--blue-dark);}
+
+  #status{margin:0 0 24px; font-size:14px;}
+  .msg{
+    border:2px dashed var(--ink);
+    border-radius:14px;
+    padding:18px 20px;
+    background:#fff;
+  }
+  .msg.error{border-color:#d9534f; background:#fff3f2; color:#a33;}
+  .msg.loading{border-color:var(--blue); color:var(--blue-dark);}
+  .spin{
+    display:inline-block; width:14px; height:14px; border-radius:50%;
+    border:2.5px solid var(--blue); border-top-color:transparent;
+    margin-right:8px; vertical-align:-2px;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  section.hidden{display:none;}
+
+  .studio-card{
+    background:var(--card);
+    border:3px solid var(--ink);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    margin-bottom:32px;
+  }
+  .studio-banner{
+    display:flex; gap:20px; padding:22px; flex-wrap:wrap;
+    background:linear-gradient(135deg, rgba(255,140,26,0.08), rgba(76,151,255,0.08));
+    border-bottom:3px solid var(--ink);
+  }
+  .studio-banner img{
+    width:150px; height:112px; object-fit:cover;
+    border-radius:12px; border:2.5px solid var(--ink);
+    flex-shrink:0;
+    background:#eee;
+  }
+  .studio-info{flex:1; min-width:220px;}
+  .studio-info h2{margin:0 0 6px; font-size:22px; font-weight:800;}
+  .studio-info .host{font-size:13px; color:#6b6252; margin-bottom:10px;}
+  .studio-info .host a{color:var(--blue-dark); text-decoration:none; font-weight:700;}
+  .studio-info .host a:hover{text-decoration:underline;}
+  .studio-desc{
+    font-size:13.5px; color:#4a4437; white-space:pre-wrap;
+    max-height:80px; overflow:auto;
+    background:#fffef9; border:1.5px solid var(--line); border-radius:8px; padding:8px 10px;
+  }
+
+  .stat-row{display:flex; flex-wrap:wrap; gap:10px; padding:16px 22px 22px;}
+  .stat-pill{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:96px; padding:10px 14px;
+    border:2px solid var(--ink); border-radius:14px;
+    background:#fff;
+  }
+  .stat-pill .num{font-size:20px; font-weight:800;}
+  .stat-pill .label{font-size:11px; color:#7a7160; letter-spacing:0.04em;}
+  .stat-pill:nth-child(1){background:#fff2df;}
+  .stat-pill:nth-child(2){background:#e9f2ff;}
+  .stat-pill:nth-child(3){background:#eefaea;}
+  .stat-pill:nth-child(4){background:#f5edff;}
+
+  .tag-row{display:flex; gap:8px; padding:0 22px 20px; flex-wrap:wrap;}
+  .tag{
+    font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px;
+    border:1.5px solid var(--ink);
+  }
+  .tag.on{background:var(--green); color:#fff; border-color:var(--green);}
+  .tag.off{background:#f1ede2; color:#8a8272;}
+
+  h3.section-title{
+    font-size:16px; font-weight:800; margin:0 0 14px;
+    display:flex; align-items:center; gap:10px;
+  }
+  h3.section-title .num-badge{
+    background:var(--ink); color:#fff; font-size:12px; padding:3px 9px; border-radius:8px;
+  }
+
+  .projects-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr));
+    gap:14px; margin-bottom:36px;
+  }
+  .proj-card{
+    background:var(--card);
+    border:2.5px solid var(--ink);
+    border-radius:14px;
+    overflow:hidden;
+    text-decoration:none;
+    color:var(--ink);
+    box-shadow:3px 3px 0 rgba(43,43,43,0.1);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .proj-card:hover{transform:translateY(-3px); box-shadow:5px 6px 0 rgba(43,43,43,0.18);}
+  .proj-card img{width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#eee; border-bottom:2.5px solid var(--ink);}
+  .proj-meta{padding:9px 10px 11px;}
+  .proj-meta .t{font-size:13px; font-weight:700; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .proj-meta .c{font-size:11px; color:#847a68;}
+
+  .curator-grid{
+    display:flex; flex-wrap:wrap; gap:10px; margin-bottom:36px;
+  }
+  .curator-chip{
+    display:flex; align-items:center; gap:8px;
+    background:var(--card); border:2px solid var(--ink); border-radius:999px;
+    padding:5px 14px 5px 5px; text-decoration:none; color:var(--ink); font-weight:700; font-size:13px;
+  }
+  .curator-chip img{width:26px; height:26px; border-radius:50%; object-fit:cover; border:1.5px solid var(--ink);}
+  .curator-chip:hover{background:#fff2df;}
+
+  .load-more{
+    display:block; margin:4px auto 40px; padding:10px 24px;
+    background:#fff; border:2.5px solid var(--ink); border-radius:12px;
+    font-weight:800; cursor:pointer; box-shadow:3px 3px 0 var(--ink);
+  }
+  .load-more:hover{transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--ink);}
+  .load-more:disabled{opacity:0.5; cursor:default;}
+
+  .empty-note{font-size:13px; color:#8a8272; padding:6px 2px 30px;}
+
+  .tabs{
+    display:flex; gap:8px; flex-wrap:wrap;
+    margin-bottom:26px; padding-bottom:4px;
+  }
+  .tab-btn{
+    padding:9px 18px;
+    border:2.5px solid var(--ink);
+    border-radius:999px;
+    background:#fff;
+    font-weight:800; font-size:13.5px;
+    cursor:pointer;
+    color:var(--ink);
+    box-shadow:3px 3px 0 rgba(43,43,43,0.12);
+    transition:transform .1s ease, background .15s ease;
+  }
+  .tab-btn:hover{transform:translateY(-1px);}
+  .tab-btn.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .tab-panel.hidden{display:none;}
+
+  .activity-note{
+    font-size:12.5px; color:#6b6252; background:#fffef2;
+    border:1.5px dashed var(--line); border-radius:10px; padding:12px 14px;
+    margin:0 0 18px; line-height:1.65;
+  }
+  .activity-note code{background:#f1ede2; padding:1px 5px; border-radius:5px; font-size:11.5px;}
+
+  .comments-list, .activity-list{display:flex; flex-direction:column; gap:12px; margin-bottom:16px;}
+
+  .comment-card{
+    background:var(--card); border:2px solid var(--ink); border-radius:14px;
+    padding:14px 16px; box-shadow:2px 2px 0 rgba(43,43,43,0.08);
+  }
+  .comment-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .comment-head img{width:28px; height:28px; border-radius:50%; border:1.5px solid var(--ink); object-fit:cover; background:#eee;}
+  .comment-head .who{font-weight:800; font-size:13.5px;}
+  .comment-head .when{font-size:11px; color:#8a8272; margin-left:auto;}
+  .comment-body{font-size:13.5px; color:#3a352a; white-space:pre-wrap; margin-bottom:8px;}
+  .comment-actions{display:flex; align-items:center; gap:10px;}
+  .reply-btn{
+    font-size:12px; font-weight:700; color:var(--blue-dark);
+    background:#eef4ff; border:1.5px solid var(--blue); border-radius:8px;
+    padding:4px 10px; cursor:pointer;
+  }
+  .reply-btn:hover{background:#dfeaff;}
+  .reply-btn:disabled{opacity:0.5; cursor:default;}
+  .replies-box{margin-top:10px; padding-left:16px; border-left:3px solid var(--line); display:flex; flex-direction:column; gap:8px;}
+  .reply-card{background:#fbf9f2; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px;}
+  .reply-card .comment-head img{width:22px; height:22px;}
+  .reply-card .comment-body{font-size:12.5px; margin-bottom:0;}
+
+  .activity-item{
+    display:flex; gap:12px; align-items:flex-start;
+    background:var(--card); border:2px solid var(--ink); border-radius:14px;
+    padding:12px 14px; box-shadow:2px 2px 0 rgba(43,43,43,0.08);
+  }
+  .activity-item .icon{
+    width:30px; height:30px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--yellow); font-size:14px; font-weight:800; color:#fff;
+    border:1.5px solid var(--ink);
+  }
+  .activity-item .body{flex:1; font-size:13.5px;}
+  .activity-item .body .who{font-weight:800;}
+  .activity-item .when{font-size:11px; color:#8a8272; white-space:nowrap;}
+
+  footer{
+    position:relative; z-index:1;
+    text-align:center; padding:20px; font-size:12px; color:#a49a89;
+  }
+</style>
+</head>
+<body>
+
+<div class="scratch-marks">
+  <span style="width:220px;height:220px;background:var(--blue);top:-60px;left:-60px;transform:rotate(18deg);"></span>
+  <span style="width:160px;height:160px;background:var(--orange);top:10%;right:-40px;transform:rotate(-12deg);"></span>
+  <span style="width:140px;height:140px;background:var(--yellow);bottom:6%;left:2%;transform:rotate(8deg);"></span>
+  <span style="width:180px;height:180px;background:var(--purple);bottom:-40px;right:8%;transform:rotate(-6deg);"></span>
+</div>
+
+<header>
+  <div class="eyebrow"><span class="dot"></span>Scratch Studio Lookup</div>
+  <h1>スタジオの<span class="block">のぞき窓</span></h1>
+  <p class="sub">スタジオのID番号を入力すると、そのスタジオの基本情報・作品一覧・キュレーターを Scratch の公開APIから取得して表示します。</p>
+</header>
+
+<main>
+  <form class="search-panel" id="searchForm">
+    <div class="field">
+      <label for="studioId">スタジオID</label>
+      <div class="field-inner">
+        <span class="hash">#</span>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="studioId" placeholder="例: 34712287" required>
+      </div>
+    </div>
+    <button type="submit" class="go" id="goBtn">のぞいてみる</button>
+    <div class="hint">スタジオのURL <code>scratch.mit.edu/studios/34712287/</code> の数字部分を入力してください。</div>
+  </form>
+
+  <div id="status"></div>
+
+  <section id="result" class="hidden">
+    <div class="studio-card">
+      <div class="studio-banner">
+        <img id="studioImg" src="" alt="スタジオのサムネイル">
+        <div class="studio-info">
+          <h2 id="studioTitle">-</h2>
+          <div class="host">作成者: <a id="studioHost" href="#" target="_blank" rel="noopener"></a></div>
+          <div class="studio-desc" id="studioDesc"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-pill"><div class="num" id="statComments">-</div><div class="label">コメント数</div></div>
+        <div class="stat-pill"><div class="num" id="statProjects">-</div><div class="label">作品数</div></div>
+        <div class="stat-pill"><div class="num" id="statCurators">-</div><div class="label">キュレーター</div></div>
+        <div class="stat-pill"><div class="num" id="statCreated">-</div><div class="label">作成日</div></div>
+      </div>
+      <div class="tag-row" id="tagRow"></div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="projects">作品</button>
+      <button class="tab-btn" data-tab="comments">コメント</button>
+      <button class="tab-btn" data-tab="managers">マネージャー</button>
+      <button class="tab-btn" data-tab="curators">キュレーター</button>
+      <button class="tab-btn" data-tab="activity">アクティビティ</button>
+    </div>
+
+    <div class="tab-panel" id="panel-projects">
+      <h3 class="section-title">入っている作品 <span class="num-badge" id="projCount">0</span></h3>
+      <div class="projects-grid" id="projectsGrid"></div>
+      <div class="empty-note hidden" id="projEmpty">このスタジオにはまだ作品がありません。</div>
+      <button class="load-more hidden" id="loadMoreProjects">もっと見る</button>
+    </div>
+
+    <div class="tab-panel hidden" id="panel-comments">
+      <h3 class="section-title">コメント <span class="num-badge" id="comCount">0</span></h3>
+      <div class="comments-list" id="commentsList"></div>
+      <div class="empty-note hidden" id="comEmpty">コメントはまだありません。</div>
+      <button class="load-more hidden" id="loadMoreComments">もっと見る</button>
+    </div>
+
+    <div class="tab-panel hidden" id="panel-managers">
+      <h3 class="section-title">マネージャー <span class="num-badge" id="mgrCount">0</span></h3>
+      <div class="curator-grid" id="managerGrid"></div>
+      <div class="empty-note hidden" id="mgrEmpty">マネージャーが見つかりませんでした。</div>
+      <button class="load-more hidden" id="loadMoreManagers">もっと見る</button>
+    </div>
+
+    <div class="tab-panel hidden" id="panel-curators">
+      <h3 class="section-title">キュレーター <span class="num-badge" id="curCount">0</span></h3>
+      <div class="curator-grid" id="curatorGrid"></div>
+      <div class="empty-note hidden" id="curEmpty">キュレーターが見つかりませんでした。</div>
+      <button class="load-more hidden" id="loadMoreCurators">もっと見る</button>
+    </div>
+
+    <div class="tab-panel hidden" id="panel-activity">
+      <h3 class="section-title">アクティビティ <span class="num-badge" id="actCount">0</span></h3>
+      <p class="activity-note">
+        <code>dateLimit</code> は活動一覧だけに使える特殊なパラメータで、<code>offset</code> の代わりに「この日時より前の活動」を取得するためのものです。
+        Scratch公式サイトの内部コード（redux）を確認したところ、<strong>ISO 8601形式のタイムスタンプ</strong>
+        （例: <code>2024-01-01T00:00:00.000Z</code> ＝ JavaScriptの <code>new Date().toISOString()</code> と同じ形式）を使っています。
+        「もっと見る」を押すと、直前に取得できた一番古い活動の日時を自動的に次回の <code>dateLimit</code> に使い、さらに古い活動を取得します。
+      </p>
+      <div class="activity-list" id="activityList"></div>
+      <div class="empty-note hidden" id="actEmpty">アクティビティが見つかりませんでした。</div>
+      <button class="load-more hidden" id="loadMoreActivity">もっと古いアクティビティを見る</button>
+    </div>
+  </section>
+</main>
+
+<footer>Scratch API (api.scratch.mit.edu) を利用した非公式ビューアです。Scratch および Scratch Team とは関係ありません。</footer>
+
+<script>
+const API = "https://api.scratch.mit.edu";
+const form = document.getElementById('searchForm');
+const goBtn = document.getElementById('goBtn');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+
+let currentStudioId = null;
+let projectsOffset = 0;
+let curatorsOffset = 0;
+let managersOffset = 0;
+let commentsOffset = 0;
+let activityDateLimit = null; // ISO 8601 timestamp used for paging /activity
+const PAGE = 24;
+const PAGE_SMALL = 20;
+
+function setStatus(html, kind){
+  statusEl.innerHTML = html ? `<div class="msg ${kind||''}">${html}</div>` : '';
+}
+
+function fmtDate(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  if(isNaN(d)) return '-';
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function fetchJson(url){
+  const res = await fetch(url, {headers:{'Accept':'application/json'}});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// --- タブ切り替え ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.remove('hidden');
+  });
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const raw = document.getElementById('studioId').value.trim();
+  const id = raw.replace(/[^0-9]/g,'');
+  if(!id){
+    setStatus('数字のIDを入力してください。', 'error');
+    return;
+  }
+  currentStudioId = id;
+  projectsOffset = 0;
+  curatorsOffset = 0;
+  managersOffset = 0;
+  commentsOffset = 0;
+  activityDateLimit = null;
+  resultEl.classList.add('hidden');
+  goBtn.disabled = true;
+  setStatus('<span class="spin"></span>スタジオ情報を読み込み中です…', 'loading');
+
+  try {
+    const studio = await fetchJson(`${API}/studios/${id}/`);
+    renderStudio(studio);
+
+    document.getElementById('projectsGrid').innerHTML = '';
+    document.getElementById('curatorGrid').innerHTML = '';
+    document.getElementById('managerGrid').innerHTML = '';
+    document.getElementById('commentsList').innerHTML = '';
+    document.getElementById('activityList').innerHTML = '';
+    document.getElementById('projCount').textContent = '…';
+    document.getElementById('curCount').textContent = '…';
+    document.getElementById('mgrCount').textContent = '…';
+    document.getElementById('comCount').textContent = '…';
+    document.getElementById('actCount').textContent = '…';
+
+    resultEl.classList.remove('hidden');
+    setStatus('','');
+
+    await Promise.all([
+      loadProjects(true),
+      loadCurators(true),
+      loadManagers(true),
+      loadComments(true),
+      loadActivity(true),
+    ]);
+  } catch(err){
+    console.error(err);
+    setStatus(
+      `スタジオ #${id} の情報を取得できませんでした（${err.message}）。IDが正しいか、スタジオが公開されているかご確認ください。`,
+      'error'
+    );
+  } finally {
+    goBtn.disabled = false;
+  }
+});
+
+function renderStudio(s){
+  document.getElementById('studioImg').src = s.image || '';
+  document.getElementById('studioTitle').textContent = s.title || '(無題のスタジオ)';
+  const hostLink = document.getElementById('studioHost');
+  if(s.host){
+    hostLink.textContent = `ホストユーザーID: ${s.host}`;
+    hostLink.href = `https://scratch.mit.edu/users/${s.host}/`;
+  } else {
+    hostLink.textContent = '不明';
+    hostLink.removeAttribute('href');
+  }
+  document.getElementById('studioDesc').textContent = s.description ? s.description : '（説明文はありません）';
+
+  document.getElementById('statComments').textContent = s?.stats?.comments ?? (s.comments_allowed===false ? '無効' : '-');
+  document.getElementById('statCreated').textContent = fmtDate(s?.history?.created);
+
+  const tagRow = document.getElementById('tagRow');
+  tagRow.innerHTML = '';
+  const tags = [
+    [s.open_to_all, '誰でも追加可', '追加は招待制'],
+    [s.comments_allowed, 'コメントOK', 'コメント不可'],
+    [s.public, '公開スタジオ', '非公開スタジオ'],
+  ];
+  tags.forEach(([cond, onLabel, offLabel]) => {
+    const t = document.createElement('span');
+    t.className = 'tag ' + (cond ? 'on' : 'off');
+    t.textContent = cond ? onLabel : offLabel;
+    tagRow.appendChild(t);
+  });
+}
+
+async function loadProjects(reset){
+  const grid = document.getElementById('projectsGrid');
+  const emptyNote = document.getElementById('projEmpty');
+  const moreBtn = document.getElementById('loadMoreProjects');
+  moreBtn.disabled = true;
+  moreBtn.textContent = '読み込み中…';
+  try {
+    const list = await fetchJson(`${API}/studios/${currentStudioId}/projects/?limit=${PAGE}&offset=${projectsOffset}`);
+    if(reset && list.length === 0){
+      emptyNote.classList.remove('hidden');
+      moreBtn.classList.add('hidden');
+    } else {
+      emptyNote.classList.add('hidden');
+    }
+    list.forEach(p => {
+      const a = document.createElement('a');
+      a.className = 'proj-card';
+      a.href = `https://scratch.mit.edu/projects/${p.id}/`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const img = document.createElement('img');
+      img.src = p.image || '';
+      img.loading = 'lazy';
+      img.alt = p.title || '';
+      const meta = document.createElement('div');
+      meta.className = 'proj-meta';
+      meta.innerHTML = `<div class="t">${escapeHtml(p.title || '(無題)')}</div><div class="c">by ${escapeHtml(p?.creator?.username || p?.username || '不明')}</div>`;
+      a.appendChild(img);
+      a.appendChild(meta);
+      grid.appendChild(a);
+    });
+    projectsOffset += list.length;
+    document.getElementById('projCount').textContent = projectsOffset + (list.length===PAGE ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE);
+  } catch(err){
+    console.error(err);
+    if(reset){
+      document.getElementById('projCount').textContent = '?';
+      emptyNote.textContent = '作品一覧の取得に失敗しました。';
+      emptyNote.classList.remove('hidden');
+    }
+  } finally {
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'もっと見る';
+  }
+}
+
+async function loadCurators(reset){
+  const grid = document.getElementById('curatorGrid');
+  const emptyNote = document.getElementById('curEmpty');
+  const moreBtn = document.getElementById('loadMoreCurators');
+  moreBtn.disabled = true;
+  moreBtn.textContent = '読み込み中…';
+  try {
+    const list = await fetchJson(`${API}/studios/${currentStudioId}/curators/?limit=${PAGE}&offset=${curatorsOffset}`);
+    if(reset && list.length === 0){
+      emptyNote.classList.remove('hidden');
+      moreBtn.classList.add('hidden');
+    } else {
+      emptyNote.classList.add('hidden');
+    }
+    list.forEach(u => {
+      const a = document.createElement('a');
+      a.className = 'curator-chip';
+      a.href = `https://scratch.mit.edu/users/${u.username}/`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const img = document.createElement('img');
+      img.src = u?.profile?.images?.['32x32'] || u?.profile?.images?.['90x90'] || '';
+      img.loading = 'lazy';
+      img.alt = u.username;
+      a.appendChild(img);
+      a.appendChild(document.createTextNode(u.username));
+      grid.appendChild(a);
+    });
+    curatorsOffset += list.length;
+    document.getElementById('curCount').textContent = curatorsOffset + (list.length===PAGE ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE);
+  } catch(err){
+    console.error(err);
+    if(reset){
+      document.getElementById('curCount').textContent = '?';
+      emptyNote.textContent = 'キュレーター一覧の取得に失敗しました。';
+      emptyNote.classList.remove('hidden');
+    }
+  } finally {
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'もっと見る';
+  }
+}
+
+document.getElementById('loadMoreProjects').addEventListener('click', () => loadProjects(false));
+document.getElementById('loadMoreCurators').addEventListener('click', () => loadCurators(false));
+
+// --- マネージャー ---
+async function loadManagers(reset){
+  const grid = document.getElementById('managerGrid');
+  const emptyNote = document.getElementById('mgrEmpty');
+  const moreBtn = document.getElementById('loadMoreManagers');
+  moreBtn.disabled = true;
+  moreBtn.textContent = '読み込み中…';
+  try {
+    const list = await fetchJson(`${API}/studios/${currentStudioId}/managers/?limit=${PAGE}&offset=${managersOffset}`);
+    if(reset && list.length === 0){
+      emptyNote.classList.remove('hidden');
+      moreBtn.classList.add('hidden');
+    } else {
+      emptyNote.classList.add('hidden');
+    }
+    list.forEach(u => {
+      const a = document.createElement('a');
+      a.className = 'curator-chip';
+      a.href = `https://scratch.mit.edu/users/${u.username}/`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const img = document.createElement('img');
+      img.src = u?.profile?.images?.['32x32'] || u?.profile?.images?.['90x90'] || '';
+      img.loading = 'lazy';
+      img.alt = u.username;
+      a.appendChild(img);
+      a.appendChild(document.createTextNode(u.username));
+      grid.appendChild(a);
+    });
+    managersOffset += list.length;
+    document.getElementById('mgrCount').textContent = managersOffset + (list.length===PAGE ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE);
+  } catch(err){
+    console.error(err);
+    if(reset){
+      document.getElementById('mgrCount').textContent = '?';
+      emptyNote.textContent = 'マネージャー一覧の取得に失敗しました。';
+      emptyNote.classList.remove('hidden');
+    }
+  } finally {
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'もっと見る';
+  }
+}
+document.getElementById('loadMoreManagers').addEventListener('click', () => loadManagers(false));
+
+// --- コメント（＋返信） ---
+async function loadComments(reset){
+  const list_el = document.getElementById('commentsList');
+  const emptyNote = document.getElementById('comEmpty');
+  const moreBtn = document.getElementById('loadMoreComments');
+  moreBtn.disabled = true;
+  moreBtn.textContent = '読み込み中…';
+  try {
+    const list = await fetchJson(`${API}/studios/${currentStudioId}/comments?limit=${PAGE_SMALL}&offset=${commentsOffset}`);
+    if(reset && list.length === 0){
+      emptyNote.classList.remove('hidden');
+      moreBtn.classList.add('hidden');
+    } else {
+      emptyNote.classList.add('hidden');
+    }
+    list.forEach(c => renderComment(c, list_el));
+    commentsOffset += list.length;
+    document.getElementById('comCount').textContent = commentsOffset + (list.length===PAGE_SMALL ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE_SMALL);
+  } catch(err){
+    console.error(err);
+    if(reset){
+      document.getElementById('comCount').textContent = '?';
+      emptyNote.textContent = 'コメントの取得に失敗しました。';
+      emptyNote.classList.remove('hidden');
+    }
+  } finally {
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'もっと見る';
+  }
+}
+document.getElementById('loadMoreComments').addEventListener('click', () => loadComments(false));
+
+function renderComment(c, container){
+  const card = document.createElement('div');
+  card.className = 'comment-card';
+  const avatar = c?.author?.image || '';
+  card.innerHTML = `
+    <div class="comment-head">
+      <img src="${avatar}" alt="">
+      <span class="who">${escapeHtml(c?.author?.username || '不明')}</span>
+      <span class="when">${fmtDate(c.datetime_created)}</span>
+    </div>
+    <div class="comment-body">${escapeHtml(c.content || '')}</div>
+  `;
+  const actions = document.createElement('div');
+  actions.className = 'comment-actions';
+  const replyCount = c.reply_count ?? 0;
+  if(replyCount > 0){
+    const btn = document.createElement('button');
+    btn.className = 'reply-btn';
+    btn.textContent = `返信 ${replyCount}件を見る`;
+    let loaded = false;
+    let repliesBox;
+    btn.addEventListener('click', async () => {
+      if(loaded){
+        repliesBox.classList.toggle('hidden');
+        btn.textContent = repliesBox.classList.contains('hidden') ? `返信 ${replyCount}件を見る` : '返信を閉じる';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '読み込み中…';
+      try {
+        const replies = await fetchJson(`${API}/studios/${currentStudioId}/comments/${c.id}/replies?limit=40&offset=0`);
+        repliesBox = document.createElement('div');
+        repliesBox.className = 'replies-box';
+        replies.forEach(r => {
+          const rc = document.createElement('div');
+          rc.className = 'reply-card comment-card';
+          rc.innerHTML = `
+            <div class="comment-head">
+              <img src="${r?.author?.image || ''}" alt="">
+              <span class="who">${escapeHtml(r?.author?.username || '不明')}</span>
+              <span class="when">${fmtDate(r.datetime_created)}</span>
+            </div>
+            <div class="comment-body">${escapeHtml(r.content || '')}</div>
+          `;
+          repliesBox.appendChild(rc);
+        });
+        card.appendChild(repliesBox);
+        loaded = true;
+        btn.disabled = false;
+        btn.textContent = '返信を閉じる';
+      } catch(err){
+        console.error(err);
+        btn.textContent = '返信の取得に失敗しました';
+      }
+    });
+    actions.appendChild(btn);
+  }
+  card.appendChild(actions);
+  container.appendChild(card);
+}
+
+// --- アクティビティ ---
+// dateLimit は ISO 8601 形式 (例: 2024-01-01T00:00:00.000Z) を使う。
+// 1回目は dateLimit を付けず最新から取得し、以降は取得できた最古の datetime_created を
+// 次の dateLimit に使うことで、offset の代わりにページング（もっと古い活動を取得）する。
+async function loadActivity(reset){
+  const list_el = document.getElementById('activityList');
+  const emptyNote = document.getElementById('actEmpty');
+  const moreBtn = document.getElementById('loadMoreActivity');
+  moreBtn.disabled = true;
+  moreBtn.textContent = '読み込み中…';
+  try {
+    let url = `${API}/studios/${currentStudioId}/activity?limit=${PAGE_SMALL}`;
+    if(activityDateLimit){
+      url += `&dateLimit=${encodeURIComponent(activityDateLimit)}`;
+    }
+    const list = await fetchJson(url);
+    if(reset && list.length === 0){
+      emptyNote.classList.remove('hidden');
+      moreBtn.classList.add('hidden');
+    } else {
+      emptyNote.classList.add('hidden');
+    }
+    list.forEach(ev => renderActivity(ev, list_el));
+
+    if(list.length > 0){
+      const oldest = list.reduce((min, ev) => {
+        const t = new Date(ev.datetime_created).getTime();
+        return (isNaN(t) || (min !== null && t >= min)) ? min : t;
+      }, null);
+      if(oldest !== null){
+        activityDateLimit = new Date(oldest).toISOString();
+      }
+    }
+
+    const totalShown = list_el.children.length;
+    document.getElementById('actCount').textContent = totalShown + (list.length===PAGE_SMALL ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE_SMALL);
+  } catch(err){
+    console.error(err);
+    if(reset){
+      document.getElementById('actCount').textContent = '?';
+      emptyNote.textContent = 'アクティビティの取得に失敗しました。';
+      emptyNote.classList.remove('hidden');
+    }
+  } finally {
+    moreBtn.disabled = false;
+    moreBtn.textContent = 'もっと古いアクティビティを見る';
+  }
+}
+document.getElementById('loadMoreActivity').addEventListener('click', () => loadActivity(false));
+
+const ACTIVITY_LABELS = {
+  becomecurator: (ev) => `${who(ev)} がキュレーターになりました`,
+  becomeownerstudio: (ev) => `${who(ev)} がホストになりました`,
+  addprojecttostudio: (ev) => `${who(ev)} が作品「${escapeHtml(ev.project_title || ev.title || '')}」を追加しました`,
+  removeprojectstudio: (ev) => `${who(ev)} が作品「${escapeHtml(ev.project_title || ev.title || '')}」を削除しました`,
+  updatestudio: (ev) => `${who(ev)} がスタジオを更新しました`,
+  becomehoststudio: (ev) => `${who(ev)} がホストになりました`,
+  becomecuratorstudio: (ev) => `${who(ev)} がキュレーターになりました`,
+};
+function who(ev){
+  return `<span class="who">${escapeHtml(ev?.actor?.username || ev.username || '不明')}</span>`;
+}
+function renderActivity(ev, container){
+  const item = document.createElement('div');
+  item.className = 'activity-item';
+  const type = (ev.type || '').toLowerCase();
+  const labelFn = ACTIVITY_LABELS[type];
+  const text = labelFn ? labelFn(ev) : `${who(ev)} が「${escapeHtml(type || '不明の操作')}」を行いました`;
+  const initial = (ev?.actor?.username || ev.username || '?').slice(0,1).toUpperCase();
+  item.innerHTML = `
+    <div class="icon">${escapeHtml(initial)}</div>
+    <div class="body">${text}</div>
+    <div class="when">${fmtDate(ev.datetime_created)}</div>
+  `;
+  container.appendChild(item);
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+</script>
+</body>
+</html>
