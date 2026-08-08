@@ -297,13 +297,6 @@
   .tab-btn.active{background:var(--ink); color:#fff; border-color:var(--ink);}
   .tab-panel.hidden{display:none;}
 
-  .activity-note{
-    font-size:12.5px; color:#6b6252; background:#fffef2;
-    border:1.5px dashed var(--line); border-radius:10px; padding:12px 14px;
-    margin:0 0 18px; line-height:1.65;
-  }
-  .activity-note code{background:#f1ede2; padding:1px 5px; border-radius:5px; font-size:11.5px;}
-
   .comments-list, .activity-list{display:flex; flex-direction:column; gap:12px; margin-bottom:16px;}
 
   .comment-card{
@@ -448,12 +441,6 @@
 
     <div class="tab-panel hidden" id="panel-activity">
       <h3 class="section-title">アクティビティ <span class="num-badge" id="actCount">0</span></h3>
-      <p class="activity-note">
-        <code>dateLimit</code> は活動一覧だけに使える特殊なパラメータで、<code>offset</code> の代わりに「この日時より前の活動」を取得するためのものです。
-        Scratch公式サイトの内部コード（redux）を確認したところ、<strong>ISO 8601形式のタイムスタンプ</strong>
-        （例: <code>2024-01-01T00:00:00.000Z</code> ＝ JavaScriptの <code>new Date().toISOString()</code> と同じ形式）を使っています。
-        「もっと見る」を押すと、直前に取得できた一番古い活動の日時を自動的に次回の <code>dateLimit</code> に使い、さらに古い活動を取得します。
-      </p>
       <div class="activity-list" id="activityList"></div>
       <div class="empty-note hidden" id="actEmpty">アクティビティが見つかりませんでした。</div>
       <button class="load-more hidden" id="loadMoreActivity">もっと古いアクティビティを見る</button>
@@ -974,24 +961,38 @@ async function loadActivity(reset){
 document.getElementById('loadMoreActivity').addEventListener('click', () => loadActivity(false));
 
 const ACTIVITY_LABELS = {
-  becomecurator: (ev) => `${who(ev)} がキュレーターになりました`,
-  becomeownerstudio: (ev) => `${who(ev)} がホストになりました`,
-  addprojecttostudio: (ev) => `${who(ev)} が作品「${escapeHtml(ev.project_title || ev.title || '')}」を追加しました`,
-  removeprojectstudio: (ev) => `${who(ev)} が作品「${escapeHtml(ev.project_title || ev.title || '')}」を削除しました`,
-  updatestudio: (ev) => `${who(ev)} がスタジオを更新しました`,
-  becomehoststudio: (ev) => `${who(ev)} がホストになりました`,
-  becomecuratorstudio: (ev) => `${who(ev)} がキュレーターになりました`,
+  becomecurator: (name) => name ? `${who(name)} がキュレーターになりました` : `キュレーターが追加されました`,
+  becomeownerstudio: (name) => name ? `${who(name)} がホストになりました` : `ホストが変更されました`,
+  addprojecttostudio: (name, ev) => {
+    const title = escapeHtml(ev.project_title || ev.title || '');
+    return name ? `${who(name)} が作品「${title}」を追加しました` : `作品「${title}」が追加されました`;
+  },
+  removeprojectstudio: (name, ev) => {
+    const title = escapeHtml(ev.project_title || ev.title || '');
+    return name ? `${who(name)} が作品「${title}」を削除しました` : `作品「${title}」が削除されました`;
+  },
+  updatestudio: (name) => name ? `${who(name)} がスタジオを更新しました` : `スタジオが更新されました`,
+  becomehoststudio: (name) => name ? `${who(name)} がホストになりました` : `ホストが変更されました`,
+  becomecuratorstudio: (name) => name ? `${who(name)} がキュレーターになりました` : `キュレーターが追加されました`,
 };
-function who(ev){
-  return `<span class="who">${escapeHtml(ev?.actor?.username || ev.username || '不明')}</span>`;
+function who(name){
+  return `<span class="who">${escapeHtml(name)}</span>`;
+}
+// Scratch APIのアクティビティイベントは actor_username にユーザー名が入る
+// （他にも実装差異があった場合に備えて、いくつかの候補フィールドを見る）
+function actorName(ev){
+  return ev.actor_username || ev?.actor?.username || ev.username || null;
 }
 function renderActivity(ev, container){
   const item = document.createElement('div');
   item.className = 'activity-item';
   const type = (ev.type || '').toLowerCase();
+  const name = actorName(ev);
   const labelFn = ACTIVITY_LABELS[type];
-  const text = labelFn ? labelFn(ev) : `${who(ev)} が「${escapeHtml(type || '不明の操作')}」を行いました`;
-  const initial = (ev?.actor?.username || ev.username || '?').slice(0,1).toUpperCase();
+  const text = labelFn
+    ? labelFn(name, ev)
+    : (name ? `${who(name)} が「${escapeHtml(type || '不明の操作')}」を行いました` : `「${escapeHtml(type || '不明の操作')}」が行われました`);
+  const initial = name ? name.slice(0,1).toUpperCase() : '?';
   item.innerHTML = `
     <div class="icon">${escapeHtml(initial)}</div>
     <div class="body">${text}</div>
