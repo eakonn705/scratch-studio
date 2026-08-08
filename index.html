@@ -438,7 +438,7 @@
 
     <div class="tabs" id="tabs">
       <button class="tab-btn active" data-tab="projects">作品</button>
-      <button class="tab-btn" data-tab="ranking">24hランキング</button>
+      <button class="tab-btn" data-tab="ranking">ランキング</button>
       <button class="tab-btn" data-tab="comments">コメント</button>
       <button class="tab-btn" data-tab="managers">マネージャー</button>
       <button class="tab-btn" data-tab="curators">キュレーター</button>
@@ -453,10 +453,10 @@
     </div>
 
     <div class="tab-panel hidden" id="panel-ranking">
-      <h3 class="section-title">24時間以内に投稿された作品のランキング <span class="num-badge" id="rankCount">0</span></h3>
+      <h3 class="section-title">ランキング <span class="num-badge" id="rankCount">0</span></h3>
       <p class="ranking-note">
-        入力した全スタジオの中から、作品自体の投稿（作成）日時が現在から24時間以内のものだけを対象に、閲覧数・ほし・はーとそれぞれでランキングします。
-        API呼び出しを抑えるため、各スタジオの最新から最大 <strong id="rankScanLimitLabel">120</strong> 件程度をスキャンして判定します。
+        入力した全スタジオに入っている作品を対象に、閲覧数・ほし・はーとそれぞれでランキングします（各TOP10）。
+        API呼び出しを抑えるため、各スタジオにつき最大 <strong id="rankScanLimitLabel">120</strong> 件までをスキャンの対象にします。
       </p>
       <button class="load-more" id="loadRankingBtn" style="margin:0 0 22px;">ランキングを取得する</button>
       <div id="rankingResult" class="hidden">
@@ -475,7 +475,7 @@
           </div>
         </div>
       </div>
-      <div class="empty-note hidden" id="rankEmpty">24時間以内に投稿された作品が見つかりませんでした。</div>
+      <div class="empty-note hidden" id="rankEmpty">ランキング対象の作品が見つかりませんでした。</div>
     </div>
 
     <div class="tab-panel hidden" id="panel-comments">
@@ -912,10 +912,9 @@ function fmtNum(n){
 }
 document.getElementById('loadMoreCurators').addEventListener('click', () => loadCurators(false));
 
-// --- 24hランキング ---
+// --- ランキング ---
 const RANK_MAX_PAGES_PER_STUDIO = 12; // 1スタジオあたり最大何ページ(×PAGE_PER_STUDIO件)スキャンするか
-const RANK_STALE_STREAK = 3; // 24h超の作品がこの回数連続したら、そのスタジオの探索を打ち切る
-const RANK_TOP_N = 15;
+const RANK_TOP_N = 10;
 const rankScanLimitLabel = document.getElementById('rankScanLimitLabel');
 if(rankScanLimitLabel) rankScanLimitLabel.textContent = String(RANK_MAX_PAGES_PER_STUDIO * PAGE_PER_STUDIO);
 
@@ -954,16 +953,11 @@ async function loadRanking(){
   }
 }
 
-// 1つのスタジオについて、新しく追加された作品から順にページを辿りながら
-// 「作品自体の作成日時が24時間以内」のものを集める。
-// スタジオの作品一覧は新しく追加されたものから順に並ぶことが多いため、
-// 24h超の作品が一定回数連続したら、そのスタジオの探索を打ち切る（無駄なAPI呼び出しを避けるため）。
+// 1つのスタジオに入っている作品を、最大 RANK_MAX_PAGES_PER_STUDIO ページ分（=RANK_MAX_PAGES_PER_STUDIO × PAGE_PER_STUDIO 件）
+// まで取得して、閲覧数・ほし・はーとなどの数値を集める（日時によるフィルタはしない＝通常のランキング）。
 async function collectRecentProjectsForStudio(studioId){
-  const now = Date.now();
-  const cutoff = now - 24*60*60*1000;
   const found = [];
   let offset = 0;
-  let staleStreak = 0;
 
   for(let page=0; page<RANK_MAX_PAGES_PER_STUDIO; page++){
     let list;
@@ -977,18 +971,10 @@ async function collectRecentProjectsForStudio(studioId){
     offset += list.length;
 
     const details = await Promise.all(list.map(p => fetchAndCacheProjectData(p.id).catch(() => null)));
+    details.forEach(data => {
+      if(data) found.push({...data, studioId});
+    });
 
-    for(const data of details){
-      if(!data){ continue; }
-      const createdTime = data.created ? new Date(data.created).getTime() : NaN;
-      if(!isNaN(createdTime) && createdTime >= cutoff){
-        found.push({...data, studioId});
-        staleStreak = 0;
-      } else {
-        staleStreak++;
-      }
-    }
-    if(staleStreak >= RANK_STALE_STREAK) break;
     if(list.length < PAGE_PER_STUDIO) break;
   }
   return found;
