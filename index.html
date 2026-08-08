@@ -122,6 +122,29 @@
   .hint{font-size:12.5px; color:#93897a; margin-top:8px; width:100%;}
   .hint a{color:var(--blue-dark);}
 
+  .proxy-row{width:100%; margin-top:6px;}
+  .proxy-toggle{
+    background:none; border:none; color:#8a8272; font-size:12.5px;
+    cursor:pointer; padding:2px 0; font-weight:700;
+  }
+  .proxy-toggle:hover{color:var(--blue-dark);}
+  .proxy-panel{
+    margin-top:12px; padding:14px 16px; background:#fbf9f2;
+    border:1.5px dashed var(--line); border-radius:12px;
+  }
+  .proxy-panel.hidden{display:none;}
+  .proxy-panel label{font-size:12px; color:#5a5346; font-weight:700; display:block; margin-bottom:8px;}
+  .proxy-input-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .proxy-input-row input{flex:1; min-width:220px; padding:9px 12px; border:2px solid var(--ink); border-radius:9px; font-size:13px;}
+  .proxy-save, .proxy-clear{
+    padding:9px 14px; border:2px solid var(--ink); border-radius:9px;
+    font-weight:700; font-size:12.5px; cursor:pointer; background:#fff;
+  }
+  .proxy-save{background:var(--blue); color:#fff; border-color:var(--blue-dark);}
+  .proxy-save:hover{background:var(--blue-dark);}
+  .proxy-clear:hover{background:#f1ede2;}
+  .proxy-hint{font-size:11.5px; color:#8a8272; margin:10px 0 0;}
+
   #status{margin:0 0 24px; font-size:14px;}
   .msg{
     border:2px dashed var(--ink);
@@ -339,6 +362,18 @@
     </div>
     <button type="submit" class="go" id="goBtn">のぞいてみる</button>
     <div class="hint">スタジオのURL <code>scratch.mit.edu/studios/34712287/</code> の数字部分を入力してください。</div>
+    <div class="proxy-row">
+      <button type="button" id="proxyToggle" class="proxy-toggle">⚙ CORSプロキシの設定</button>
+      <div id="proxyPanel" class="proxy-panel hidden">
+        <label for="proxyUrl">Cloudflare WorkerのURL（標準設定であなたのWorkerが最初から使われます。別のWorkerに変更したい場合のみ入力してください）</label>
+        <div class="proxy-input-row">
+          <input type="text" id="proxyUrl" placeholder="https://silent-boat-8eae.18-kota-shobun.workers.dev">
+          <button type="button" id="proxySave" class="proxy-save">保存</button>
+          <button type="button" id="proxyClear" class="proxy-clear">直接接続に切り替え</button>
+        </div>
+        <p class="proxy-hint" id="proxyStatus"></p>
+      </div>
+    </div>
   </form>
 
   <div id="status"></div>
@@ -416,7 +451,23 @@
 <footer>Scratch API (api.scratch.mit.edu) を利用した非公式ビューアです。Scratch および Scratch Team とは関係ありません。</footer>
 
 <script>
-const API = "https://api.scratch.mit.edu";
+const DIRECT_API = "https://api.scratch.mit.edu";
+// デフォルトのCloudflare Workerプロキシ（初期値として自動的に使われる）
+const DEFAULT_PROXY_URL = "https://silent-boat-8eae.18-kota-shobun.workers.dev";
+function getStoredProxy(){
+  try {
+    const stored = localStorage.getItem('scratchProxyUrl');
+    if(stored !== null) return stored; // ユーザーが明示的に空文字(直接接続)を選んだ場合も尊重
+    return DEFAULT_PROXY_URL;
+  } catch(e){ return DEFAULT_PROXY_URL; }
+}
+function apiBase(){
+  const p = getStoredProxy();
+  return p ? p.replace(/\/$/, '') : DIRECT_API;
+}
+// 既存コード内の `${API}` はすべて apiBase() の呼び出しに置き換えて動的化
+const API = { toString: apiBase }; // 互換のため残置（テンプレートリテラルで自動的に文字列化される）
+Object.defineProperty(window, '__unused_API_marker__', { value: true });
 const form = document.getElementById('searchForm');
 const goBtn = document.getElementById('goBtn');
 const statusEl = document.getElementById('status');
@@ -441,6 +492,44 @@ function fmtDate(iso){
   if(isNaN(d)) return '-';
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 }
+
+// --- CORSプロキシ設定パネル ---
+const proxyToggle = document.getElementById('proxyToggle');
+const proxyPanel = document.getElementById('proxyPanel');
+const proxyUrlInput = document.getElementById('proxyUrl');
+const proxyStatus = document.getElementById('proxyStatus');
+
+function refreshProxyStatus(){
+  const p = getStoredProxy();
+  if(p === DEFAULT_PROXY_URL){
+    proxyStatus.textContent = `現在: 標準のWorkerプロキシを使用中 → ${p}`;
+    proxyUrlInput.value = p;
+  } else if(p){
+    proxyStatus.textContent = `現在: カスタムWorkerプロキシ経由でアクセスしています → ${p}`;
+    proxyUrlInput.value = p;
+  } else {
+    proxyStatus.textContent = '現在: api.scratch.mit.edu に直接アクセスしています（GitHub PagesなどではCORSエラーになります）。';
+    proxyUrlInput.value = '';
+  }
+}
+refreshProxyStatus();
+
+proxyToggle.addEventListener('click', () => {
+  proxyPanel.classList.toggle('hidden');
+});
+document.getElementById('proxySave').addEventListener('click', () => {
+  const v = proxyUrlInput.value.trim();
+  if(!v){ return; }
+  try { localStorage.setItem('scratchProxyUrl', v); } catch(e){}
+  refreshProxyStatus();
+  setStatus('プロキシURLを保存しました。もう一度スタジオIDを検索してください。', 'loading');
+});
+document.getElementById('proxyClear').addEventListener('click', () => {
+  try { localStorage.setItem('scratchProxyUrl', ''); } catch(e){}
+  proxyUrlInput.value = '';
+  refreshProxyStatus();
+  setStatus('直接接続に戻しました。GitHub PagesなどではCORSエラーが出る場合があります。', 'loading');
+});
 
 async function fetchJson(url){
   const res = await fetch(url, {headers:{'Accept':'application/json'}});
@@ -504,7 +593,7 @@ form.addEventListener('submit', async (e) => {
   } catch(err){
     console.error(err);
     setStatus(
-      `スタジオ #${id} の情報を取得できませんでした（${err.message}）。IDが正しいか、スタジオが公開されているかご確認ください。`,
+      `スタジオ #${id} の情報を取得できませんでした（${err.message}）。IDが正しいか、スタジオが公開されているか、また「Failed to fetch」の場合はブラウザのコンソールにCORSエラーが出ていないかご確認ください。CORSエラーの場合は上の「⚙ CORSプロキシの設定」からCloudflare WorkerのURLを設定してください。`,
       'error'
     );
   } finally {
