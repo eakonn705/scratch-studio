@@ -530,7 +530,7 @@ let commentsOffset = 0;
 let activityDateLimit = null; // ISO 8601 timestamp used for paging /activity
 let loadedProjectIds = []; // ランキング計算対象（現在「作品」タブに表示中の作品ID）
 const API_MAX_LIMIT = 40; // Scratch APIの `limit` パラメータの上限（40を超えると400 Bad Requestになる）
-const INITIAL_PROJECT_COUNT = 50; // 初回に表示したい作品数（1回のAPI呼び出しでは40が上限なので、内部的に複数回に分けて取得する）
+const INITIAL_PROJECT_COUNT = 80; // 初回に表示したい作品数（1回のAPI呼び出しでは40が上限なので、内部的に複数回に分けて取得する）
 const PAGE = 40; // 「もっと見る」1回あたり、および キュレーター/マネージャー の取得件数
 const PAGE_SMALL = 20;
 
