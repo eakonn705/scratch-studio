@@ -428,7 +428,7 @@
 
     <div class="tabs" id="tabs">
       <button class="tab-btn active" data-tab="projects">作品</button>
-      <button class="tab-btn" data-tab="ranking">ランキング</button>
+      <button class="tab-btn" data-tab="ranking">トレンドランキング</button>
       <button class="tab-btn" data-tab="comments">コメント</button>
       <button class="tab-btn" data-tab="managers">マネージャー</button>
       <button class="tab-btn" data-tab="curators">キュレーター</button>
@@ -443,7 +443,7 @@
     </div>
 
     <div class="tab-panel hidden" id="panel-ranking">
-      <h3 class="section-title">ランキング <span class="num-badge" id="rankCount">0</span></h3>
+      <h3 class="section-title">トレンドランキング <span class="num-badge" id="rankCount">0</span></h3>
       <p class="ranking-note">
         「作品」タブで読み込み済みの閲覧数・ほし・はーとの数値をそのまま使ってランキングします（追加のAPI/Worker呼び出しは行いません）。
         「作品」タブで「もっと見る」を押して読み込む作品を増やすと、ここのランキングも自動的に更新されます。
@@ -529,7 +529,7 @@ let managersOffset = 0;
 let commentsOffset = 0;
 let activityDateLimit = null; // ISO 8601 timestamp used for paging /activity
 let loadedProjectIds = []; // ランキング計算対象（現在「作品」タブに表示中の作品ID）
-const PAGE = 24;
+const PAGE = 50;
 const PAGE_SMALL = 20;
 
 // 作品ごとの stats / 作成日時などをキャッシュ（一覧表示とランキングで共有して二重取得を防ぐ）
@@ -544,6 +544,16 @@ function fmtDate(iso){
   const d = new Date(iso);
   if(isNaN(d)) return '-';
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Scratch APIのスタジオコメント数は100件で頭打ちになり、実際は100件以上あっても
+// 常に100を返す仕様なので、100が返ってきた場合は「100+」として表示する。
+function fmtCommentCount(count, commentsAllowed){
+  if(count === undefined || count === null){
+    return commentsAllowed === false ? '無効' : '-';
+  }
+  if(count >= 100) return '100+';
+  return String(count);
 }
 
 // --- CORSプロキシ設定パネル ---
@@ -678,7 +688,7 @@ function renderStudio(s){
         </div>
       </div>
       <div class="stat-row">
-        <div class="stat-pill"><div class="num">${s?.stats?.comments ?? (s.comments_allowed===false ? '無効' : '-')}</div><div class="label">コメント数</div></div>
+        <div class="stat-pill"><div class="num">${fmtCommentCount(s?.stats?.comments, s.comments_allowed)}</div><div class="label">コメント数</div></div>
         <div class="stat-pill"><div class="num">${fmtDate(s?.history?.created)}</div><div class="label">作成日</div></div>
       </div>
       <div class="tag-row">${tags}</div>
