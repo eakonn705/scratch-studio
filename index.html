@@ -233,16 +233,6 @@
   #studioCardsContainer .studio-card.small .stat-pill .num{font-size:16px;}
   #studioCardsContainer .studio-card.error{padding:16px 20px; border-color:#d9534f; background:#fff3f2; color:#a33; font-size:13.5px;}
 
-  .single-studio-note{
-    font-size:12px; color:#8a8272; background:#fbf9f2;
-    border:1px dashed var(--line); border-radius:8px; padding:8px 12px; margin:0 0 16px;
-  }
-
-  .proj-studio-tag{
-    display:inline-block; font-size:10px; font-weight:700; color:#fff;
-    background:var(--purple); padding:2px 7px; border-radius:6px; margin-bottom:4px;
-  }
-
   .ranking-note{
     font-size:12.5px; color:#6b6252; background:#fffef2;
     border:1.5px dashed var(--line); border-radius:10px; padding:12px 14px;
@@ -403,20 +393,20 @@
 <header>
   <div class="eyebrow"><span class="dot"></span>Scratch Studio Lookup</div>
   <h1>スタジオの<span class="block">のぞき窓</span></h1>
-  <p class="sub">スタジオのID番号を入力すると、そのスタジオの基本情報・作品一覧・キュレーターを Scratch の公開APIから取得して表示します。カンマ・スペース・改行区切りで複数のスタジオIDをまとめて入力することもできます。</p>
+  <p class="sub">スタジオのID番号を入力すると、そのスタジオの基本情報・作品一覧・キュレーターを Scratch の公開APIから取得して表示します。</p>
 </header>
 
 <main>
   <form class="search-panel" id="searchForm">
     <div class="field">
-      <label for="studioId">スタジオID（複数可）</label>
+      <label for="studioId">スタジオID</label>
       <div class="field-inner">
         <span class="hash">#</span>
-        <input type="text" inputmode="numeric" id="studioId" placeholder="例: 34712287, 32635350, 51775942" required>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="studioId" placeholder="例: 34712287" required>
       </div>
     </div>
     <button type="submit" class="go" id="goBtn">のぞいてみる</button>
-    <div class="hint">スタジオのURL <code>scratch.mit.edu/studios/34712287/</code> の数字部分を、カンマ・スペース・改行区切りで1つ以上入力してください。</div>
+    <div class="hint">スタジオのURL <code>scratch.mit.edu/studios/34712287/</code> の数字部分を入力してください。</div>
     <div class="proxy-row">
       <button type="button" id="proxyToggle" class="proxy-toggle">⚙ CORSプロキシの設定</button>
       <div id="proxyPanel" class="proxy-panel hidden">
@@ -446,7 +436,7 @@
     </div>
 
     <div class="tab-panel" id="panel-projects">
-      <h3 class="section-title">入っている作品（時系列順・複数スタジオはラウンドロビンで合成） <span class="num-badge" id="projCount">0</span></h3>
+      <h3 class="section-title">入っている作品 <span class="num-badge" id="projCount">0</span></h3>
       <div class="projects-grid" id="projectsGrid"></div>
       <div class="empty-note hidden" id="projEmpty">このスタジオにはまだ作品がありません。</div>
       <button class="load-more hidden" id="loadMoreProjects">もっと見る</button>
@@ -455,10 +445,9 @@
     <div class="tab-panel hidden" id="panel-ranking">
       <h3 class="section-title">ランキング <span class="num-badge" id="rankCount">0</span></h3>
       <p class="ranking-note">
-        入力した全スタジオに入っている作品を対象に、閲覧数・ほし・はーとそれぞれでランキングします（各TOP10）。
-        API呼び出しを抑えるため、各スタジオにつき最大 <strong id="rankScanLimitLabel">120</strong> 件までをスキャンの対象にします。
+        「作品」タブで読み込み済みの閲覧数・ほし・はーとの数値をそのまま使ってランキングします（追加のAPI/Worker呼び出しは行いません）。
+        「作品」タブで「もっと見る」を押して読み込む作品を増やすと、ここのランキングも自動的に更新されます。
       </p>
-      <button class="load-more" id="loadRankingBtn" style="margin:0 0 22px;">ランキングを取得する</button>
       <div id="rankingResult" class="hidden">
         <div class="rank-columns">
           <div class="rank-col">
@@ -475,11 +464,10 @@
           </div>
         </div>
       </div>
-      <div class="empty-note hidden" id="rankEmpty">ランキング対象の作品が見つかりませんでした。</div>
+      <div class="empty-note hidden" id="rankEmpty">ランキング対象の作品がまだありません。「作品」タブの読み込みが終わるまでお待ちください。</div>
     </div>
 
     <div class="tab-panel hidden" id="panel-comments">
-      <p class="single-studio-note hidden" id="comNote">※ コメントは最初に入力したスタジオのみ対象です。</p>
       <h3 class="section-title">コメント <span class="num-badge" id="comCount">0</span></h3>
       <div class="comments-list" id="commentsList"></div>
       <div class="empty-note hidden" id="comEmpty">コメントはまだありません。</div>
@@ -487,7 +475,6 @@
     </div>
 
     <div class="tab-panel hidden" id="panel-managers">
-      <p class="single-studio-note hidden" id="mgrNote">※ マネージャーは最初に入力したスタジオのみ対象です。</p>
       <h3 class="section-title">マネージャー <span class="num-badge" id="mgrCount">0</span></h3>
       <div class="curator-grid" id="managerGrid"></div>
       <div class="empty-note hidden" id="mgrEmpty">マネージャーが見つかりませんでした。</div>
@@ -495,7 +482,6 @@
     </div>
 
     <div class="tab-panel hidden" id="panel-curators">
-      <p class="single-studio-note hidden" id="curNote">※ キュレーターは最初に入力したスタジオのみ対象です。</p>
       <h3 class="section-title">キュレーター <span class="num-badge" id="curCount">0</span></h3>
       <div class="curator-grid" id="curatorGrid"></div>
       <div class="empty-note hidden" id="curEmpty">キュレーターが見つかりませんでした。</div>
@@ -503,7 +489,6 @@
     </div>
 
     <div class="tab-panel hidden" id="panel-activity">
-      <p class="single-studio-note hidden" id="actNote">※ アクティビティは最初に入力したスタジオのみ対象です。</p>
       <h3 class="section-title">アクティビティ <span class="num-badge" id="actCount">0</span></h3>
       <div class="activity-list" id="activityList"></div>
       <div class="empty-note hidden" id="actEmpty">アクティビティが見つかりませんでした。</div>
@@ -537,15 +522,14 @@ const goBtn = document.getElementById('goBtn');
 const statusEl = document.getElementById('status');
 const resultEl = document.getElementById('result');
 
-let currentStudioIds = [];
-let currentStudioId = null; // 先頭のスタジオID（コメント/マネージャー/キュレーター/アクティビティ用）
-let projectQueues = {}; // studioId -> {offset, exhausted}
+let currentStudioId = null;
+let projectsOffset = 0;
 let curatorsOffset = 0;
 let managersOffset = 0;
 let commentsOffset = 0;
 let activityDateLimit = null; // ISO 8601 timestamp used for paging /activity
+let loadedProjectIds = []; // ランキング計算対象（現在「作品」タブに表示中の作品ID）
 const PAGE = 24;
-const PAGE_PER_STUDIO = 10; // 複数スタジオ合成時、1スタジオあたり1回で取得する件数
 const PAGE_SMALL = 20;
 
 // 作品ごとの stats / 作成日時などをキャッシュ（一覧表示とランキングで共有して二重取得を防ぐ）
@@ -619,25 +603,25 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const raw = document.getElementById('studioId').value.trim();
-  const ids = Array.from(new Set(raw.split(/[^0-9]+/).filter(Boolean)));
-  if(ids.length === 0){
-    setStatus('数字のスタジオIDを1つ以上入力してください。', 'error');
+  const id = raw.replace(/[^0-9]/g,'');
+  if(!id){
+    setStatus('数字のIDを入力してください。', 'error');
     return;
   }
-  currentStudioIds = ids;
-  currentStudioId = ids[0];
-  projectQueues = {};
-  ids.forEach(id => { projectQueues[id] = {offset: 0, exhausted: false}; });
+  currentStudioId = id;
+  projectsOffset = 0;
   curatorsOffset = 0;
   managersOffset = 0;
   commentsOffset = 0;
   activityDateLimit = null;
+  loadedProjectIds = [];
   resultEl.classList.add('hidden');
   goBtn.disabled = true;
   setStatus('<span class="spin"></span>スタジオ情報を読み込み中です…', 'loading');
 
   try {
-    await renderStudios(ids);
+    const studio = await fetchJson(`${API}/studios/${id}/`);
+    renderStudio(studio);
 
     document.getElementById('projectsGrid').innerHTML = '';
     document.getElementById('curatorGrid').innerHTML = '';
@@ -645,18 +629,13 @@ form.addEventListener('submit', async (e) => {
     document.getElementById('commentsList').innerHTML = '';
     document.getElementById('activityList').innerHTML = '';
     document.getElementById('rankingResult').classList.add('hidden');
-    document.getElementById('rankEmpty').classList.add('hidden');
+    document.getElementById('rankEmpty').classList.remove('hidden');
     document.getElementById('rankCount').textContent = '0';
     document.getElementById('projCount').textContent = '…';
     document.getElementById('curCount').textContent = '…';
     document.getElementById('mgrCount').textContent = '…';
     document.getElementById('comCount').textContent = '…';
     document.getElementById('actCount').textContent = '…';
-
-    const multi = ids.length > 1;
-    ['comNote','mgrNote','curNote','actNote'].forEach(nid => {
-      document.getElementById(nid).classList.toggle('hidden', !multi);
-    });
 
     resultEl.classList.remove('hidden');
     setStatus('','');
@@ -671,7 +650,7 @@ form.addEventListener('submit', async (e) => {
   } catch(err){
     console.error(err);
     setStatus(
-      `スタジオ情報を取得できませんでした（${err.message}）。IDが正しいか、スタジオが公開されているか、また「Failed to fetch」の場合はブラウザのコンソールにCORSエラーが出ていないかご確認ください。CORSエラーの場合は上の「⚙ CORSプロキシの設定」からCloudflare WorkerのURLを設定してください。`,
+      `スタジオ #${id} の情報を取得できませんでした（${err.message}）。IDが正しいか、スタジオが公開されているか、また「Failed to fetch」の場合はブラウザのコンソールにCORSエラーが出ていないかご確認ください。CORSエラーの場合は上の「⚙ CORSプロキシの設定」からCloudflare WorkerのURLを設定してください。`,
       'error'
     );
   } finally {
@@ -679,37 +658,21 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-async function renderStudios(ids){
+function renderStudio(s){
   const container = document.getElementById('studioCardsContainer');
-  container.innerHTML = '';
-  const multi = ids.length > 1;
-  const results = await Promise.all(ids.map(id =>
-    fetchJson(`${API}/studios/${id}/`).then(s => ({id, s})).catch(err => ({id, err}))
-  ));
-  // 1つも取得できなかった場合はエラーとして投げる
-  if(results.every(r => r.err)) throw results[0].err;
-
-  results.forEach(({id, s, err}) => {
-    const card = document.createElement('div');
-    card.className = 'studio-card' + (multi ? ' small' : '');
-    if(err){
-      card.classList.add('error');
-      card.textContent = `スタジオ #${id} の情報を取得できませんでした（${err.message}）。`;
-      container.appendChild(card);
-      return;
-    }
-    const tags = [
-      [s.open_to_all, '誰でも追加可', '追加は招待制'],
-      [s.comments_allowed, 'コメントOK', 'コメント不可'],
-      [s.public, '公開スタジオ', '非公開スタジオ'],
-    ].map(([cond, onLabel, offLabel]) =>
-      `<span class="tag ${cond ? 'on' : 'off'}">${cond ? onLabel : offLabel}</span>`
-    ).join('');
-    card.innerHTML = `
+  const tags = [
+    [s.open_to_all, '誰でも追加可', '追加は招待制'],
+    [s.comments_allowed, 'コメントOK', 'コメント不可'],
+    [s.public, '公開スタジオ', '非公開スタジオ'],
+  ].map(([cond, onLabel, offLabel]) =>
+    `<span class="tag ${cond ? 'on' : 'off'}">${cond ? onLabel : offLabel}</span>`
+  ).join('');
+  container.innerHTML = `
+    <div class="studio-card">
       <div class="studio-banner">
         <img src="${s.image || ''}" alt="スタジオのサムネイル">
         <div class="studio-info">
-          <h2>${escapeHtml(s.title || '(無題のスタジオ)')} <span style="font-weight:400;font-size:12px;color:#8a8272;">#${id}</span></h2>
+          <h2>${escapeHtml(s.title || '(無題のスタジオ)')}</h2>
           <div class="host">作成者: ${s.host ? `<a href="https://scratch.mit.edu/users/${s.host}/" target="_blank" rel="noopener">ホストユーザーID: ${s.host}</a>` : '不明'}</div>
           <div class="studio-desc">${escapeHtml(s.description || '（説明文はありません）')}</div>
         </div>
@@ -719,9 +682,8 @@ async function renderStudios(ids){
         <div class="stat-pill"><div class="num">${fmtDate(s?.history?.created)}</div><div class="label">作成日</div></div>
       </div>
       <div class="tag-row">${tags}</div>
-    `;
-    container.appendChild(card);
-  });
+    </div>
+  `;
 }
 
 async function loadProjects(reset){
@@ -731,27 +693,15 @@ async function loadProjects(reset){
   moreBtn.disabled = true;
   moreBtn.textContent = '読み込み中…';
   try {
-    const pages = await Promise.all(currentStudioIds.map(id => fetchStudioProjectPage(id)));
-    const anyItems = pages.some(p => p.length > 0);
-    if(reset && !anyItems){
+    const list = await fetchJson(`${API}/studios/${currentStudioId}/projects/?limit=${PAGE}&offset=${projectsOffset}`);
+    if(reset && list.length === 0){
       emptyNote.classList.remove('hidden');
       moreBtn.classList.add('hidden');
     } else {
       emptyNote.classList.add('hidden');
     }
-
-    // ラウンドロビンで合成: 各スタジオの1件目→2件目→…の順で交互に並べる
-    const merged = [];
-    const maxLen = Math.max(0, ...pages.map(p => p.length));
-    for(let i=0;i<maxLen;i++){
-      for(let s=0;s<pages.length;s++){
-        if(pages[s][i]) merged.push({project: pages[s][i], studioId: currentStudioIds[s]});
-      }
-    }
-
     const newIds = [];
-    const multi = currentStudioIds.length > 1;
-    merged.forEach(({project: p, studioId}) => {
+    list.forEach(p => {
       const a = document.createElement('a');
       a.className = 'proj-card';
       a.href = `https://scratch.mit.edu/projects/${p.id}/`;
@@ -764,7 +714,6 @@ async function loadProjects(reset){
       const meta = document.createElement('div');
       meta.className = 'proj-meta';
       meta.innerHTML = `
-        ${multi ? `<span class="proj-studio-tag">#${escapeHtml(studioId)}</span><br>` : ''}
         <div class="t">${escapeHtml(p.title || '(無題)')}</div>
         <div class="c">by ${escapeHtml(p?.creator?.username || p?.username || '不明')}</div>
         <div class="proj-stats" id="stats-${p.id}">
@@ -776,11 +725,10 @@ async function loadProjects(reset){
       grid.appendChild(a);
       newIds.push(p.id);
     });
-
-    const shownTotal = grid.children.length;
-    const anyMore = Object.values(projectQueues).some(q => !q.exhausted);
-    document.getElementById('projCount').textContent = shownTotal + (anyMore ? '+' : '');
-    moreBtn.classList.toggle('hidden', !anyMore);
+    projectsOffset += list.length;
+    document.getElementById('projCount').textContent = projectsOffset + (list.length===PAGE ? '+' : '');
+    moreBtn.classList.toggle('hidden', list.length < PAGE);
+    loadedProjectIds.push(...newIds);
     loadProjectStats(newIds);
   } catch(err){
     console.error(err);
@@ -792,22 +740,6 @@ async function loadProjects(reset){
   } finally {
     moreBtn.disabled = false;
     moreBtn.textContent = 'もっと見る';
-  }
-}
-
-// 1スタジオ分の次ページを取得する（スタジオごとに offset を独立管理）
-async function fetchStudioProjectPage(studioId){
-  const q = projectQueues[studioId];
-  if(!q || q.exhausted) return [];
-  try {
-    const list = await fetchJson(`${API}/studios/${studioId}/projects/?limit=${PAGE_PER_STUDIO}&offset=${q.offset}`);
-    q.offset += list.length;
-    if(list.length < PAGE_PER_STUDIO) q.exhausted = true;
-    return list;
-  } catch(err){
-    console.error(err);
-    q.exhausted = true;
-    return [];
   }
 }
 
@@ -885,6 +817,7 @@ async function loadProjectStats(ids){
   }
   const workers = Array.from({length: Math.min(STATS_CONCURRENCY, ids.length)}, worker);
   await Promise.all(workers);
+  renderRanking();
 }
 
 // /projects/<id> を取得してキャッシュに保存する（プロジェクト一覧・ランキングで共用）
@@ -913,71 +846,29 @@ function fmtNum(n){
 document.getElementById('loadMoreCurators').addEventListener('click', () => loadCurators(false));
 
 // --- ランキング ---
-const RANK_MAX_PAGES_PER_STUDIO = 12; // 1スタジオあたり最大何ページ(×PAGE_PER_STUDIO件)スキャンするか
+// 追加のAPI/Worker呼び出しは行わず、「作品」タブを表示する際に既に取得済みの
+// stats（projectDataCache）だけを使ってランキングを組み立てる。
 const RANK_TOP_N = 10;
-const rankScanLimitLabel = document.getElementById('rankScanLimitLabel');
-if(rankScanLimitLabel) rankScanLimitLabel.textContent = String(RANK_MAX_PAGES_PER_STUDIO * PAGE_PER_STUDIO);
 
-document.getElementById('loadRankingBtn').addEventListener('click', () => loadRanking());
-
-async function loadRanking(){
-  const btn = document.getElementById('loadRankingBtn');
+function renderRanking(){
   const resultBox = document.getElementById('rankingResult');
   const emptyNote = document.getElementById('rankEmpty');
-  btn.disabled = true;
-  btn.textContent = '取得中…（スタジオ数や作品数によっては時間がかかります）';
-  resultBox.classList.add('hidden');
+
+  const items = loadedProjectIds
+    .map(id => projectDataCache.get(id))
+    .filter(Boolean);
+
+  document.getElementById('rankCount').textContent = String(items.length);
+  if(items.length === 0){
+    resultBox.classList.add('hidden');
+    emptyNote.classList.remove('hidden');
+    return;
+  }
   emptyNote.classList.add('hidden');
-  document.getElementById('rankCount').textContent = '…';
-  try {
-    const perStudioResults = await Promise.all(
-      currentStudioIds.map(id => collectRecentProjectsForStudio(id))
-    );
-    const combined = perStudioResults.flat();
-
-    document.getElementById('rankCount').textContent = String(combined.length);
-    if(combined.length === 0){
-      emptyNote.classList.remove('hidden');
-      return;
-    }
-    renderRankColumn('rankViews', [...combined].sort((a,b)=>b.views-a.views).slice(0,RANK_TOP_N), 'views', '👁');
-    renderRankColumn('rankFavorites', [...combined].sort((a,b)=>b.favorites-a.favorites).slice(0,RANK_TOP_N), 'favorites', '⭐');
-    renderRankColumn('rankLoves', [...combined].sort((a,b)=>b.loves-a.loves).slice(0,RANK_TOP_N), 'loves', '❤');
-    resultBox.classList.remove('hidden');
-  } catch(err){
-    console.error(err);
-    setStatus(`ランキングの取得中にエラーが発生しました（${err.message}）。`, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'ランキングを取得する';
-  }
-}
-
-// 1つのスタジオに入っている作品を、最大 RANK_MAX_PAGES_PER_STUDIO ページ分（=RANK_MAX_PAGES_PER_STUDIO × PAGE_PER_STUDIO 件）
-// まで取得して、閲覧数・ほし・はーとなどの数値を集める（日時によるフィルタはしない＝通常のランキング）。
-async function collectRecentProjectsForStudio(studioId){
-  const found = [];
-  let offset = 0;
-
-  for(let page=0; page<RANK_MAX_PAGES_PER_STUDIO; page++){
-    let list;
-    try {
-      list = await fetchJson(`${API}/studios/${studioId}/projects/?limit=${PAGE_PER_STUDIO}&offset=${offset}`);
-    } catch(err){
-      console.error(err);
-      break;
-    }
-    if(list.length === 0) break;
-    offset += list.length;
-
-    const details = await Promise.all(list.map(p => fetchAndCacheProjectData(p.id).catch(() => null)));
-    details.forEach(data => {
-      if(data) found.push({...data, studioId});
-    });
-
-    if(list.length < PAGE_PER_STUDIO) break;
-  }
-  return found;
+  resultBox.classList.remove('hidden');
+  renderRankColumn('rankViews', [...items].sort((a,b)=>b.views-a.views).slice(0,RANK_TOP_N), 'views', '👁');
+  renderRankColumn('rankFavorites', [...items].sort((a,b)=>b.favorites-a.favorites).slice(0,RANK_TOP_N), 'favorites', '⭐');
+  renderRankColumn('rankLoves', [...items].sort((a,b)=>b.loves-a.loves).slice(0,RANK_TOP_N), 'loves', '❤');
 }
 
 function renderRankColumn(listId, items, metricKey, icon){
@@ -987,7 +878,6 @@ function renderRankColumn(listId, items, metricKey, icon){
     el.innerHTML = '<li class="empty-note">対象の作品がありません。</li>';
     return;
   }
-  const multi = currentStudioIds.length > 1;
   items.forEach((data, i) => {
     const li = document.createElement('li');
     const a = document.createElement('a');
@@ -1000,7 +890,7 @@ function renderRankColumn(listId, items, metricKey, icon){
       <img src="${data.image}" alt="" loading="lazy">
       <div class="ri-meta">
         <div class="ri-title">${escapeHtml(data.title)}</div>
-        <div class="ri-sub">by ${escapeHtml(data.creatorName)}${multi ? ` ・ #${escapeHtml(data.studioId)}` : ''}</div>
+        <div class="ri-sub">by ${escapeHtml(data.creatorName)}</div>
       </div>
       <div class="ri-val">${icon}${fmtNum(data[metricKey])}</div>
     `;
